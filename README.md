@@ -1,0 +1,2 @@
+# generate_without_id_derive
+# generate_insertable_struct_derive
