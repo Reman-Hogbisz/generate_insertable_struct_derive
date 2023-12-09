@@ -96,7 +96,7 @@ pub fn create_insertable_struct(input: TokenStream) -> TokenStream {
                 .extend::<TokenStream2>(quote! { #field : self.#field.clone(), });
         });
 
-    let struct_name = Ident::new(&format!("{}WithoutId", ident), Span::call_site());
+    let struct_name = Ident::new(&format!("Insertable{}", ident), Span::call_site());
 
     let output = quote! {
 
