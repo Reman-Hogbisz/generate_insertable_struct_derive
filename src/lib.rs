@@ -6,7 +6,7 @@ use syn::{parse_macro_input, DeriveInput, FieldsNamed, Meta};
 
 #[proc_macro_derive(
     CreateInsertableStruct,
-    attributes(changeset_options, id_name, table_name)
+    attributes(changeset_options, non_new_fields, table_name)
 )]
 pub fn create_insertable_struct(input: TokenStream) -> TokenStream {
     let DeriveInput {
