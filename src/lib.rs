@@ -1,30 +1,38 @@
 use proc_macro::{self, TokenStream};
 use proc_macro2::TokenStream as TokenStream2;
 use proc_macro2::{Ident, Span};
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::{parse_macro_input, DeriveInput, FieldsNamed, Meta};
 
-#[proc_macro_derive(
-    CreateInsertableStruct,
-    attributes(changeset_options, id_name, table_name)
-)]
+#[proc_macro_derive(CreateInsertableStruct, attributes(id_name, diesel))]
 pub fn create_insertable_struct(input: TokenStream) -> TokenStream {
     let DeriveInput {
         ident, data, attrs, ..
     } = parse_macro_input!(input);
 
-    let changeset_options_attr = match attrs
+    let diesel_attrs: Vec<&syn::Attribute> = attrs
         .iter()
-        .find(|attr| attr.path.is_ident("changeset_options"))
-    {
-        Some(attr) => attr,
-        None => panic!("derive(CreateInsertableStruct) requires a changeset_options attribute"),
-    };
+        .filter(|attr| attr.path.is_ident("diesel"))
+        .collect();
 
-    let table_name_attr = match attrs.iter().find(|attr| attr.path.is_ident("table_name")) {
-        Some(attr) => attr,
-        None => panic!("derive(CreateInsertableStruct) requires a table_name attribute"),
-    };
+    assert!(
+        !diesel_attrs.is_empty(),
+        "derive(CreateInsertableStruct) requires a diesel(table_name = \"...\") attribute (diesel attrs is empty)"
+    );
+
+    let table_name_attr = diesel_attrs.into_iter().find(|attr| {
+        let tokens = attr.to_token_stream().into_iter().collect::<Vec<_>>();
+        tokens
+            .iter()
+            .any(|token| token.to_string().contains("table_name"))
+    });
+
+    assert!(
+        table_name_attr.is_some(),
+        "derive(CreateInsertableStruct) requires a diesel(table_name = \"...\") attribute (no table_name attr found)"
+    );
+
+    let table_name_attr = table_name_attr.unwrap(); // Safety: We just checked that it is some
 
     let non_new_fields_attr = attrs
         .iter()
@@ -54,12 +62,12 @@ pub fn create_insertable_struct(input: TokenStream) -> TokenStream {
 
     let struct_token = match data {
         syn::Data::Struct(s) => s,
-        _ => panic!("derive(CreateInsertableStruct) only supports structs"),
+        _ => panic!("derive(CreateFilter) only supports structs"),
     };
 
     let fields = match struct_token.fields {
         syn::Fields::Named(FieldsNamed { named, .. }) => named,
-        _ => panic!("derive(CreateInsertableStruct) only supports named fields"),
+        _ => panic!("derive(CreateFilter) only supports named fields"),
     };
 
     let (idents, types): (Vec<_>, Vec<_>) = fields
@@ -88,7 +96,7 @@ pub fn create_insertable_struct(input: TokenStream) -> TokenStream {
                 .extend::<TokenStream2>(quote! { #field : self.#field.clone(), });
         });
 
-    let struct_name = Ident::new(&format!("Insertable{}", ident), Span::call_site());
+    let struct_name = Ident::new(&format!("{}WithoutId", ident), Span::call_site());
 
     let output = quote! {
 
@@ -99,7 +107,7 @@ pub fn create_insertable_struct(input: TokenStream) -> TokenStream {
         #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Insertable, AsChangeset, TS)]
         #[ts(export)]
         #table_name_attr
-        #changeset_options_attr
+        #[diesel(treat_none_as_null = true)]
         pub struct #struct_name {
             #filtered_field_declarations
         } impl Into<#struct_name> for #ident {
