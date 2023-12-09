@@ -8,7 +8,7 @@ use syn::{parse_macro_input, DeriveInput, FieldsNamed, Meta};
     CreateInsertableStruct,
     attributes(changeset_options, id_name, table_name)
 )]
-pub fn create_without_id(input: TokenStream) -> TokenStream {
+pub fn create_insertable_struct(input: TokenStream) -> TokenStream {
     let DeriveInput {
         ident, data, attrs, ..
     } = parse_macro_input!(input);
