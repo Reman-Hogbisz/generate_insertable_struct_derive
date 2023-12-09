@@ -4,7 +4,7 @@ use proc_macro2::{Ident, Span};
 use quote::{quote, ToTokens};
 use syn::{parse_macro_input, DeriveInput, FieldsNamed, Meta};
 
-#[proc_macro_derive(CreateInsertableStruct, attributes(id_name, diesel))]
+#[proc_macro_derive(CreateInsertableStruct, attributes(non_new_fields, diesel))]
 pub fn create_insertable_struct(input: TokenStream) -> TokenStream {
     let DeriveInput {
         ident, data, attrs, ..
